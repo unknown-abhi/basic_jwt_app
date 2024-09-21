@@ -1,18 +1,19 @@
 package com.example.basic_jwt_app.helper;
 
-import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtHelper {
@@ -21,7 +22,18 @@ public class JwtHelper {
     public static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60;
 
     // Secret key for signing JWT
-    private Key secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+    private SecretKey secretKey;
+
+    JwtHelper() {
+        // Initialize the secret key
+        try {
+            KeyGenerator keyGenerator = KeyGenerator.getInstance("HmacSHA256");
+            this.secretKey = keyGenerator.generateKey();
+        } catch (NoSuchAlgorithmException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
 
     // Retrieve username from JWT token
     public String getUsernameFromToken(String token) {
@@ -41,7 +53,11 @@ public class JwtHelper {
 
     // Retrieve all claims from JWT token using the secret key
     private Claims getAllClaimsFromToken(String token) {
-        return Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     // Check if the token has expired
@@ -59,12 +75,14 @@ public class JwtHelper {
     // Create the token by setting claims, subject, issue date, expiration date, and
     // signing it with the secret key
     private String doGenerateToken(Map<String, Object> claims, String subject) {
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(subject)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY * 1000))
-                .signWith(secretKey, SignatureAlgorithm.HS512)
+
+        return Jwts.builder().claims()
+                .add(claims)
+                .subject(subject)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() * JWT_TOKEN_VALIDITY))
+                .and()
+                .signWith(secretKey)
                 .compact();
     }
 
