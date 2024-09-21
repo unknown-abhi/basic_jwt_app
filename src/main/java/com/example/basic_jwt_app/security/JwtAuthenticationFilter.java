@@ -15,8 +15,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.example.basic_jwt_app.helper.JwtHelper;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,40 +39,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String requestHeader = request.getHeader("Authorization");
         // Bearer 2352345235sdfrsfgsdfsdf
         logger.info("Header :: {}", requestHeader);
-        String username = null;
         String token = null;
+        String username = null;
 
-        if (requestHeader != null && requestHeader.startsWith("Bearer")) {
+        if (requestHeader != null && requestHeader.startsWith("Bearer ")) {
             // looking good
             token = requestHeader.substring(7);
-            try {
-
-                username = this.jwtHelper.getUsernameFromToken(token);
-
-            } catch (IllegalArgumentException | ExpiredJwtException | MalformedJwtException e) {
-                logger.error("JWT Token error: {}", e.getMessage());
-            }
-        } else {
-            logger.info("Invalid Header Value !!");
+            username = this.jwtHelper.getUsernameFromToken(token);
         }
 
-        //
+        // if token is valid, set user into security context
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             // fetch user detail from username
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
             Boolean validateToken = this.jwtHelper.validateToken(token, userDetails);
+
             if (validateToken) {
 
                 // set the authentication
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
+
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } else {
                 logger.info("Validation fails !!");
             }
         }
+
         filterChain.doFilter(request, response);
 
     }
