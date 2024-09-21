@@ -26,13 +26,13 @@ public class SecurityConfig {
                 .cors(cors -> cors.disable())
                 // .authorizeHttpRequests(auth ->
                 // auth.requestMatchers("/home/**").hasRole("ADMID")
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/home/**").authenticated()
-                        .requestMatchers("/auth/login").permitAll()
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/auth/login")
+                        .permitAll()
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(point))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-                
+
         http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
